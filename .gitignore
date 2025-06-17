@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+arxiv_parser_env/
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+
+# Logs and Reports
+*.log
+*.csv
+processing.log
+
+# Output directories
+output/
+failed/
+temp/ 
