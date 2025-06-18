@@ -1,198 +1,231 @@
-# ArXiv 论文解析器
+# arxiv2markdown
 
-一个用于自动处理 arXiv 论文 TeX 源码，并将其转换为结构化 HTML 和 Markdown 格式的工具。
+**English | [中文](#项目简介)**
 
 ---
 
-## 1. 前置依赖 (Prerequisites)
+## Project Overview
 
-在运行此项目之前，请确保您的系统中已安装以下软件和资源。
+arxiv2markdown is an automated pipeline for batch processing arXiv TeX source packages. It extracts, filters, and converts scientific papers into structured HTML (and optionally Markdown), with AI-powered asset selection and multi-process acceleration.
 
-### 1.1 Docker
+---
 
-本项目使用 Docker 来运行 LaTeXML，以确保 TeX 编译环境的一致性。
+## Features
 
-- **macOS**: [下载 Docker Desktop for Mac](https://docs.docker.com/desktop/mac/install/)
-- **Windows**: [下载 Docker Desktop for Windows](https://docs.docker.com/desktop/windows/install/)
-- **Linux**: 请根据您的发行版选择合适的安装方式，例如 [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)。
+- **Automatic extraction** of arXiv TeX source packages (.tar/.gz)
+- **Main TeX file recognition** and LaTeXML Docker-based HTML conversion
+- **AI-powered filtering**: Only research-valuable code/data/tables are kept (via Ollama + gemma:4b)
+- **Unified assets directory** for all valuable attachments
+- **Multi-process parallel processing** for high throughput
+- **Progress & speed logging** for monitoring
+- **Robust error handling** and failed case tracking
 
-安装完成后，请确保 Docker 服务已启动。
+---
 
-### 1.2 LaTeXML Docker 镜像
+## Prerequisites
 
-项目依赖 `latexml/ar5ivist` 镜像进行 TeX 到 HTML 的转换。请在终端中运行以下命令拉取镜像：
+- **Python 3.8+**
+- **Docker** (for LaTeXML container)
+- **Pandoc** (optional, for Markdown conversion)
+- **Ollama** (AI asset filtering, remote API, e.g. http://192.168.31.4:11434, model: gemma:4b)
 
-```bash
-docker pull latexml/ar5ivist
-```
+---
 
-### 1.3 Pandoc
-
-Pandoc 用于将 LaTeXML 生成的 HTML 文件转换为 Markdown (GFM) 格式。
-
-- 访问 [Pandoc 官网安装页面](https://pandoc.org/installing.html) 并根据您的操作系统下载并安装。
-- 在 macOS 上，您也可以使用 Homebrew 安装：
-  ```bash
-  brew install pandoc
-  ```
-
-安装后，请在终端运行 `pandoc --version` 检查是否安装成功。
-
-## 2. 安装 (Installation)
-
-首先，克隆本项目仓库到您的本地。
-
-### 2.1 创建虚拟环境 (推荐)
-
-建议使用虚拟环境来管理项目的 Python 依赖。
+## Installation
 
 ```bash
+git clone https://github.com/ChenglinPoly/arxiv2markdown.git
+cd arxiv2markdown
+
+# (Recommended) Create a virtual environment
 python3 -m venv arxiv_parser_env
 source arxiv_parser_env/bin/activate
-```
 
-### 2.2 安装 Python 包
-
-项目所需的 Python 依赖项已在 `requirements.txt` 中列出。运行以下命令进行安装：
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
-*(注意: 如果项目中没有 `requirements.txt` 文件，请根据 `arxiv_parser/parallel_processor.py` 和 `arxiv_parser/processors/tex_processor.py` 中的导入语句手动安装 `numpy`, `requests` 等依赖。)*
-
-
-## 3. 配置 (Configuration)
-
-项目的主要配置位于 `arxiv_parser/config.py` 文件中。您可以根据需要修改此文件。
-
-- **目录设置**:
-  - `SOURCE_DIR`: 存放待处理的 arXiv `.gz` 压缩包的源目录 (默认为 `Arxiv/`)。
-  - `OUTPUT_DIR`: 存放处理结果（每个文件一个子目录）的输出目录 (默认为 `output/`)。
-  - `FAILED_DIR`: 存放处理失败文件的日志或移动失败文件的目录 (默认为 `failed/`)。
-  - `TEMP_DIR`: 用于存放解压等操作的临时文件目录 (默认为 `temp/`)。
-
-- **主 TeX 文件识别**:
-  - `COMMON_MAIN_TEX_NAMES`: 一个列表，包含了常见的主 TeX 文件名（如 `main.tex`, `ms.tex`），用于快速定位入口文件。
-
-- **附件筛选配置 (`FILE_FILTERING_CONFIG`)**:
-  - `enable_ai_filtering`: 是否启用 AI 智能筛选附件。如果为 `True`，将调用 Ollama 服务判断文件价值；如果为 `False`，则仅基于扩展名进行筛选。
-  - `valuable_extensions`: 一个集合，定义了哪些文件扩展名被认为是"有价值的"，在`enable_ai_filtering`为`False`时或对于非文本文件时使用。
-  - `ollama_api_url`: 您的 Ollama 服务 API 地址。
-  - `ollama_model`: 用于判断文件价值的 Ollama 模型名称（例如 `gemma:4b`）。
 
 ---
 
-配置完成后，您可以通过运行测试脚本来启动处理器：
+## Configuration
+
+Edit `arxiv_parser/config.py` to set:
+
+- `SOURCE_DIR`, `OUTPUT_DIR`, `FAILED_DIR`, `TEMP_DIR`
+- AI filtering: `enable_ai_filtering`, `ollama_api_url`, `ollama_model`
+- Main TeX file patterns, valuable file extensions, etc.
+
+---
+
+## Usage
+
+### 1. Prepare Data
+
+Put your arXiv `.tar` or `.gz` source packages in the `Arxiv/` directory.
+
+### 2. Batch Processing
+
 ```bash
-python run_processor_test.py
+# Batch process with 20 workers, log speed
+nohup python batch_processor.py --source-dir ./Arxiv --workers 20 > logs/batch.log 2>&1 &
+tail -f logs/batch.log
 ```
 
+### 3. Monitor Progress
 
+```bash
+tail -f logs/speed.log
+```
+
+### 4. Test Output Folder Counting
+
+```bash
+python batch_processor.py --test-speed
+```
+
+---
+
+## Output Structure
+
+- `output/` : Each processed paper in a subfolder, with HTML and valuable assets
+- `logs/` : Processing logs, speed logs
+- `failed/` : Failed cases
+- `processing_state.json` : Task state tracking
+
+---
+
+## Project Tree
+
+```
+arxiv2markdown/
+├── arxiv_parser/           # Core logic (main, parallel, processors, utils)
+├── batch_processor.py      # Batch orchestrator (with progress/speed logging)
+├── run_processor_test.py   # Test script
+├── output/                 # Results
+├── failed/                 # Failed cases
+├── logs/                   # Logs
+├── requirements.txt        # Python dependencies
+└── README.md
+```
+
+---
+
+## License
+
+MIT
+
+---
+
+# 项目简介
+
+arxiv2markdown 是一个用于批量处理 arXiv TeX 源码包的自动化工具链。它可自动解压、识别主 TeX 文件、调用 LaTeXML 容器转 HTML，并用 AI 智能筛选有价值的附件，全部输出到统一目录，支持多进程加速和进度监控。
+
+---
+
+## 主要特性
+
+- **自动解压** arXiv TeX 源码包（.tar/.gz）
+- **主 TeX 文件智能识别**，LaTeXML Docker 转 HTML
+- **AI 附件筛选**：仅保留有科研价值的代码/数据/表格（Ollama + gemma:4b）
+- **统一 assets 目录**，便于后续数据集整理
+- **多进程并行处理**，高效批量转换
+- **进度与速度日志**，便于监控
+- **健壮的异常处理与失败追踪**
+
+---
+
+## 依赖环境
+
+- **Python 3.8+**
+- **Docker**（用于 LaTeXML 容器）
+- **Pandoc**（可选，用于 Markdown 转换）
+- **Ollama**（AI 附件筛选，远程 API，如 http://192.168.31.4:11434，模型 gemma:4b）
+
+---
+
+## 安装步骤
+
+```bash
+git clone https://github.com/ChenglinPoly/arxiv2markdown.git
+cd arxiv2markdown
+
+# （推荐）创建虚拟环境
+python3 -m venv arxiv_parser_env
+source arxiv_parser_env/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
+---
+
+## 配置说明
+
+编辑 `arxiv_parser/config.py`，可设置：
+
+- 目录路径：`SOURCE_DIR`, `OUTPUT_DIR`, `FAILED_DIR`, `TEMP_DIR`
+- AI筛选：`enable_ai_filtering`, `ollama_api_url`, `ollama_model`
+- 主TeX文件名模式、附件有价值扩展名等
+
+---
+
+## 使用方法
+
+### 1. 准备数据
+
+将 arXiv `.tar` 或 `.gz` 源码包放入 `Arxiv/` 目录。
+
+### 2. 批量处理
+
+```bash
+# 20线程批量处理，日志输出
+nohup python batch_processor.py --source-dir ./Arxiv --workers 20 > logs/batch.log 2>&1 &
+tail -f logs/batch.log
+```
+
+### 3. 实时监控进度
+
+```bash
+tail -f logs/speed.log
+```
+
+### 4. 单独测试 output 文件夹统计
+
+```bash
+python batch_processor.py --test-speed
+```
+
+---
+
+## 输出结构
+
+- `output/` ：每篇论文一个子目录，含 HTML 及有价值附件
+- `logs/` ：处理日志、速度日志
+- `failed/` ：失败案例
+- `processing_state.json` ：任务状态跟踪
+
+---
 
 ## 项目结构
 
 ```
 arxiv2markdown/
-├── arxiv_parser/                 # 核心处理模块
-│   ├── __init__.py
-│   ├── main.py                   # 主处理逻辑
-│   ├── parallel_processor.py     # 并行处理模块
-│   ├── config.py                 # 配置文件
-│   ├── processors/               # 处理器模块
-│   │   ├── __init__.py
-│   │   └── tex_processor.py      # TeX文件处理器
-│   └── utils/                    # 工具模块
-│       ├── __init__.py
-│       ├── logger.py             # 日志工具
-│       └── file_system.py        # 文件系统工具
-├── Arxiv/                        # 源文件目录（用户放置arXiv文件）
-├── output/                       # 成功转换的文件输出目录
-├── failed/                       # 失败文件目录
-│   └── fail.log                  # 失败详情日志
-├── temp/                         # 临时工作目录
-├── test_parallel_processing.py   # 并行处理测试脚本
+├── arxiv_parser/           # 核心逻辑（主控、并行、处理器、工具）
+├── batch_processor.py      # 批处理编排器（含进度/速度日志）
+├── run_processor_test.py   # 测试脚本
+├── output/                 # 结果输出
+├── failed/                 # 失败案例
+├── logs/                   # 日志
+├── requirements.txt        # 依赖
 └── README.md
 ```
 
-## 使用方法
+---
 
-### 1. 准备文件
+## 许可证
 
-将arXiv TeX压缩包（.gz或.tar.gz文件）放入 `Arxiv/` 目录中。
+MIT
 
-> 注意：系统会自动跳过PDF文件，仅处理TeX源码包。
+---
 
-### 2. 基本使用
-
-**串行处理（单线程）:**
-```bash
-python -m arxiv_parser.main
-```
-
-**并行处理（推荐）:**
-```bash
-# 使用默认4个worker
-python test_parallel_processing.py
-
-# 指定worker数量
-python test_parallel_processing.py --workers 8
-
-# 简短形式
-python test_parallel_processing.py -w 6
-```
-
-### 3. 输出结果
-
-处理完成后，文件将分类存放：
-
-- **成功文件**: `output/文件名/` 目录
-  - `文件名.md`: 转换后的Markdown文件
-  - `assets/`: 提取的图片资源
-  - `source_code/`: 源代码文件（如有）
-
-- **失败文件**: `failed/` 目录
-  - 原始文件移动至此
-  - `fail.log`: 详细的失败原因日志
-
-## 配置选项
-
-### 主要配置（`arxiv_parser/config.py`）
-
-- `SOURCE_DIR`: 源文件目录路径
-- `OUTPUT_DIR`: 输出目录路径
-- `FAILED_DIR`: 失败文件目录路径
-- `TEMP_DIR`: 临时工作目录路径
-- `PANDOC_PATH`: Pandoc可执行文件路径
-
-### 处理参数
-
-- **超时设置**: Pandoc转换超时时间为180秒（3分钟）
-- **并发数量**: 默认4个worker，可根据系统性能调整
-- **文件过滤**: 自动跳过LaTeX辅助文件和模板文件
-
-## 处理报告
-
-
-## 示例输出
-
-```
-🎯 并行处理完成！详细报告如下：
-================================================================================
-Metric,Value
-总耗时 (s),1299.72
-已处理文件数 (成功+失败),107
-成功文件数,99
-失败文件数,8
-成功率 (%),92.52
-平均处理时长 (s),58.46/单进程
-平均处理时长(s),12.14/workers:5
-中位数处理时长 (s),53.58
-最高处理时长 (s),244.17
-最低处理时长 (s),0.00
-中部80%处理时长范围 (s),13.22 - 123.52
- Latex处理tikz图表问题 1
- docker 资源超限 1
- 宏定义问题/语法错误 2
- 文件受损，解压失败 4
-================================================================================
-``` 
+如需进一步定制或补充示例、FAQ、贡献指南等内容，请告知！ 
