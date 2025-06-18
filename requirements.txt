@@ -1,2 +1,5 @@
-PyMuPDF==1.23.24
-python-magic==0.4.27 
+numpy
+requests
+PyMuPDF
+python-magic
+# crawl4ai  # optional, only needed for test.py 
